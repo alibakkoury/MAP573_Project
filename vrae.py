@@ -9,16 +9,6 @@ import os
 
 
 class Encoder(nn.Module):
-    """
-    Encoder network containing enrolled LSTM/GRU
-
-    :param number_of_features: number of input features
-    :param hidden_size: hidden size of the RNN
-    :param hidden_layer_depth: number of layers in RNN
-    :param latent_length: latent vector length
-    :param dropout: percentage of nodes to dropout
-    :param block: LSTM/GRU block
-    """
     def __init__(self, number_of_features, hidden_size, hidden_layer_depth, latent_length, dropout, block = 'LSTM'):
 
         super(Encoder, self).__init__()
@@ -36,12 +26,6 @@ class Encoder(nn.Module):
             raise NotImplementedError
 
     def forward(self, x):
-        """Forward propagation of encoder. Given input, outputs the last hidden state of encoder
-
-        :param x: input to the encoder, of shape (sequence_length, batch_size, number_of_features)
-        :return: last hidden state of encoder, of shape (batch_size, hidden_size)
-        """
-
         _, (h_end, c_end) = self.model(x)
 
         h_end = h_end[-1, :, :]
@@ -49,11 +33,6 @@ class Encoder(nn.Module):
 
 
 class Lambda(nn.Module):
-    """Lambda module converts output of encoder to latent vector
-
-    :param hidden_size: hidden size of the encoder
-    :param latent_length: latent vector length
-    """
     def __init__(self, hidden_size, latent_length):
         super(Lambda, self).__init__()
 
@@ -67,12 +46,6 @@ class Lambda(nn.Module):
         nn.init.xavier_uniform_(self.hidden_to_logvar.weight)
 
     def forward(self, cell_output):
-        """Given last hidden state of encoder, passes through a linear layer, and finds the mean and variance
-
-        :param cell_output: last hidden state of encoder
-        :return: latent vector
-        """
-
         self.latent_mean = self.hidden_to_mean(cell_output)
         self.latent_logvar = self.hidden_to_logvar(cell_output)
 
@@ -84,17 +57,6 @@ class Lambda(nn.Module):
             return self.latent_mean
 
 class Decoder(nn.Module):
-    """Converts latent vector into output
-
-    :param sequence_length: length of the input sequence
-    :param batch_size: batch size of the input sequence
-    :param hidden_size: hidden size of the RNN
-    :param hidden_layer_depth: number of layers in RNN
-    :param latent_length: latent vector length
-    :param output_size: 2, one representing the mean, other log std dev of the output
-    :param block: GRU/LSTM - use the same which you've used in the encoder
-    :param dtype: Depending on cuda enabled/disabled, create the tensor
-    """
     def __init__(self, sequence_length, batch_size, hidden_size, hidden_layer_depth, latent_length, output_size, dtype, block='LSTM'):
 
         super(Decoder, self).__init__()
@@ -150,26 +112,6 @@ def _assert_no_grad(tensor):
         "mark these tensors as not requiring gradients"
 
 class VRAE(BaseEstimator, nn.Module):
-    """Variational recurrent auto-encoder. This module is used for dimensionality reduction of timeseries
-
-    :param sequence_length: length of the input sequence
-    :param number_of_features: number of input features
-    :param hidden_size:  hidden size of the RNN
-    :param hidden_layer_depth: number of layers in RNN
-    :param latent_length: latent vector length
-    :param batch_size: number of timeseries in a single batch
-    :param learning_rate: the learning rate of the module
-    :param block: GRU/LSTM to be used as a basic building block
-    :param n_epochs: Number of iterations/epochs
-    :param dropout_rate: The probability of a node being dropped-out
-    :param optimizer: ADAM/ SGD optimizer to reduce the loss function
-    :param loss: SmoothL1Loss / MSELoss / ReconLoss / any custom loss which inherits from `_Loss` class
-    :param boolean cuda: to be run on GPU or not
-    :param print_every: The number of iterations after which loss should be printed
-    :param boolean clip: Gradient clipping to overcome explosion
-    :param max_grad_norm: The grad-norm to be clipped
-    :param dload: Download directory where models are to be dumped
-    """
     def __init__(self, sequence_length, number_of_features, hidden_size=90, hidden_layer_depth=2, latent_length=20,
                  batch_size=32, learning_rate=0.005, block='LSTM',
                  n_epochs=5, dropout_rate=0., optimizer='Adam', loss='MSELoss',
@@ -252,14 +194,6 @@ class VRAE(BaseEstimator, nn.Module):
         return x_decoded, latent
 
     def _rec(self, x_decoded, x, loss_fn):
-        """
-        Compute the loss given output x decoded, input x and the specified loss function
-
-        :param x_decoded: output of the decoder
-        :param x: input to the encoder
-        :param loss_fn: loss function specified
-        :return: joint loss, reconstruction loss and kl-divergence loss
-        """
         latent_mean, latent_logvar = self.lmbd.latent_mean, self.lmbd.latent_logvar
 
         kl_loss = -0.5 * torch.mean(1 + latent_logvar - latent_mean.pow(2) - latent_logvar.exp())
@@ -283,12 +217,6 @@ class VRAE(BaseEstimator, nn.Module):
         t = 0
 
         for t, X in enumerate(train_loader):
-
-            # Index first element of array to return tensor
-            #X = X[0]
-
-            # required to swap axes, since dataloader gives output in (batch_size x seq_len x num_of_features)
-            #print(X.size())
             X = X.permute(1,0,2)
 
             self.optimizer.zero_grad()
